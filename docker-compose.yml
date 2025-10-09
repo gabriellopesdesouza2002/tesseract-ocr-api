@@ -1,0 +1,13 @@
+version: '3.9'
+
+services:
+  ocr-api:
+    build: .
+    container_name: fastapi-tesseract
+    environment:
+      - API_TOKEN=2342i32goq3784hf85
+    ports:
+      - "8085:8000"   # HostPort:ContainerPort
+    volumes:
+      - ./:/app
+    restart: always
