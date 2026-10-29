@@ -1,98 +1,106 @@
-# 📃 Tesseract OCR API com FastAPI
+<div align="center">
 
-Este projeto implementa uma **API local de OCR** compatível com aplicações de automação (n8n, Node.js, Python, etc.), utilizando o **Tesseract** para extração de texto de PDFs.
+# Tesseract OCR API
 
----
+**API REST em Python para extrair texto de documentos PDF usando Tesseract OCR.**
 
-## 🚀 Funcionalidades
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![OCR](https://img.shields.io/badge/Tesseract-OCR-blue)
 
-📄 **Extração de texto (OCR)** de arquivos PDF com suporte a múltiplos idiomas (`por`, `eng`, `por+eng`)
-⚙️ **Configuração de DPI** (qualidade da conversão de imagem para texto)
-📑 **Limite de páginas opcional** (`limit_pages`) para PDFs grandes
-🔐 **Proteção com autenticação Bearer (API_TOKEN)**
-🐳 **Pronto para uso com Docker e docker-compose**
+*Python · FastAPI · Tesseract · PyMuPDF · Docker*
 
----
+</div>
 
-## ▶️ Como executar
+## Visão geral / Overview
 
+Esta API recebe um **PDF via HTTP**, converte suas páginas em imagens e utiliza o Tesseract para extrair o texto. Foi criada para uso em automações e integração com ferramentas como **n8n**, scripts Python e outros clientes HTTP.
+
+**EN:** Local REST API that extracts text from PDF files with FastAPI, Tesseract and Docker. Supports configurable OCR language, DPI and page limits.
+
+## Funcionalidades
+
+- `POST /ocr-pdf` — recebe um arquivo PDF e devolve o texto extraído em JSON.
+- **Idiomas:** `por`, `eng` e `por+eng` com os pacotes de idioma da imagem Docker.
+- **DPI configurável** pelo parâmetro de formulário `dpi` (padrão: `300`).
+- **Limite de páginas opcional** via `limit_pages`.
+- **Autenticação Bearer** no endpoint de OCR, configurada com `API_TOKEN`.
+- **Documentação OpenAPI** gerada pelo FastAPI em `/docs`.
+
+## Executar com Docker Compose
+
+Requisitos: Git e Docker com Compose.
+
+```bash
+git clone https://github.com/gabriellopesdesouza2002/tesseract-ocr-api.git
+cd tesseract-ocr-api
 docker compose up --build -d
-
-Interface de teste (Swagger UI):
-👉 [http://localhost:8085/docs](http://localhost:8085/docs)
-
----
-
-## 🔐 Variáveis de ambiente
-
-| Variável    | Descrição                                | Obrigatória |
-| ----------- | ---------------------------------------- | ----------- |
-| `API_TOKEN` | Chave de acesso para autenticação Bearer | ✅           |
-
-Exemplo (`docker-compose.yml`):
-```
-environment:
-    API_TOKEN=secret-key
 ```
 
----
+O Compose atual publica a porta **8085** do host para a porta **8000** do contêiner. A documentação interativa fica em:
 
-## 📥 Exemplo de requisição
-```
-curl --location 'http://localhost:8085/ocr-pdf' \
---header 'Authorization: Bearer 2342i32goq3784hf85' \
---form 'file=@"C:\Users\gablo\Downloads\Invoice-UNK1SIQL-0001.pdf"' \
---form 'lang="por+eng"' \
---form 'dpi="400"' \
---form 'limit_pages="2"'
+**http://localhost:8085/docs**
+
+> **Configuração antes de uso real:** o `docker-compose.yml` publicado contém um `API_TOKEN` de exemplo definido diretamente no arquivo. Substitua-o por um valor privado e restrinja o acesso à porta antes de qualquer exposição fora de um ambiente local controlado. O projeto não deve ser tratado como uma API pública pronta para produção sem revisão adicional.
+
+## Exemplo de requisição
+
+Envie um PDF em `multipart/form-data` para `/ocr-pdf`, com o token configurado no ambiente:
+
+```bash
+curl --request POST "http://localhost:8085/ocr-pdf" \
+  --header "Authorization: Bearer SEU_TOKEN_CONFIGURADO" \
+  --form "file=@documento.pdf" \
+  --form "lang=por+eng" \
+  --form "dpi=300" \
+  --form "limit_pages=2"
 ```
 
----
+Campos aceitos:
 
-## ⚡ Resposta esperada
-```
+| Campo | Tipo | Padrão | Descrição |
+| --- | --- | --- | --- |
+| `file` | arquivo | obrigatório | PDF enviado para OCR |
+| `lang` | string | `por` | Idioma(s) do Tesseract |
+| `dpi` | inteiro | `300` | Resolução da conversão |
+| `limit_pages` | inteiro opcional | todas | Quantidade máxima de páginas |
+
+Resposta ilustrativa:
+
+```json
 {
-"text": "Invoice 0001\nTotal: R$ 2.500,00\n...",
-"parameters": {
+  "text": "Exemplo de texto extraído do PDF.",
+  "parameters": {
     "language": "por+eng",
-    "dpi": 400,
+    "dpi": 300,
     "limit_pages": 2
-    }
+  }
 }
 ```
----
 
-## 🐳 Base Docker
+## Integração com n8n
 
-* **Imagem:** python:3.11-slim
-* **Dependências:**
+Use um nó **HTTP Request** com método `POST` para `http://localhost:8085/ocr-pdf` (ou o endereço acessível a partir do ambiente do n8n).
 
-  * tesseract-ocr, tesseract-ocr-por, tesseract-ocr-eng
-  * fastapi, uvicorn, pytesseract, PyMuPDF, Pillow
-* **Porta exposta:** 8000
-* **Modo de execução:** uvicorn main:app --host 0.0.0.0 --port 8000
+Configure a autenticação no header `Authorization: Bearer ...` e envie o documento como **Binary File** no campo `file`. Os demais parâmetros (`lang`, `dpi` e `limit_pages`) devem ir como campos do formulário.
 
----
+> Se o n8n estiver em outro contêiner ou host, `localhost` apontará para o próprio ambiente do n8n, não necessariamente para esta API. Ajuste a conectividade entre os serviços.
 
-## 🧪 Testado com
+## Arquitetura
 
-✅ Docker Compose
-✅ n8n HTTP Request + Binary File
-✅ Postman / cURL
-✅ Python requests
+- [`main.py`](main.py) — aplicação FastAPI, autenticação e endpoint HTTP.
+- [`ocr.py`](ocr.py) — renderização de páginas via PyMuPDF e OCR via pytesseract.
+- [`Dockerfile`](Dockerfile) — imagem Python com Tesseract e pacotes de idioma.
+- [`docker-compose.yml`](docker-compose.yml) — configuração local do serviço.
+- [`requirements.txt`](requirements.txt) — dependências Python.
 
----
+## Limitações conhecidas
 
-## 💬 Exemplo de integração no n8n
+O processamento atual renderiza páginas do PDF em arquivos temporários, então arquivos grandes podem consumir bastante memória, CPU e espaço em disco. O código também não implementa, por si só, limites de upload, controle de concorrência ou uma rotina completa de limpeza de arquivos temporários em todos os caminhos de erro.
 
-Use o nó **HTTP Request**, método **POST**, tipo **multipart/form-data**, e envie:
+O projeto é um exemplo de API de OCR para integração e automação; avalie esses pontos antes de processar documentos sensíveis ou utilizá-lo em ambientes externos.
 
-* `file` (Binary File)
-* `lang` (por ou eng)
-* `dpi` (ex: 400)
-* Header: `Authorization: Bearer 2342i32goq3784hf85`
+## Contato
 
----
-
-📦 **Plug & Play:**
-Suba com `docker compose up` e comece a extrair texto de PDFs em segundos.
+Projeto de [Gabriel Lopes](https://github.com/gabriellopesdesouza2002). Sugestões e correções podem ser encaminhadas pelo [GitHub Issues](https://github.com/gabriellopesdesouza2002/tesseract-ocr-api/issues).
